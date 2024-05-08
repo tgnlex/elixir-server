@@ -2,12 +2,16 @@ defmodule Todo.Server do
   use GenServer, restart: :temporary
   def start_link(name) do
     IO.puts("Starting to-do server for #{name}")
+    GenServer.start_link(Todo.Server, name, name: via_tuple(name))
   end
-
   defp via_tuple(name) do
     Todo.ProcessRegistry.via_tuple({__MODULE__, name})
   end
-
+  def init(name) do
+    send(self(), :real_init)
+    register(self(), name)
+    {:ok, nil}
+  end
   def handle_cast({:store, key, data}, state) do
     spawn(fn ->
       key
@@ -25,9 +29,9 @@ defmodule Todo.Server do
       GenServer.reply(caller, data)
     end)
     {:noreply, state}
-  end
-  def handle_info(:real_init, state) do
-    {:ok, {name. Todo.Database.get(name) || Todo.List.new()}}
 
   end
+  def handle_info(:real_init, name) do
+    {:ok, {name, Todo.Database.get(name) || Todo.List.new()}}
+    end
 end

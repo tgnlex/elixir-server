@@ -16,7 +16,15 @@ defmodule Todo.DatabaseWorker do
   def get(worker_id, key) do
     GenServer.call(via_tuple(worker_id), {:get, key})
   end
+  def handle_call({:get, key}, _, db_folder) do
+    data =
+      case File.read(file_name(db_folder, key)) do
+        {:ok, contents} -> :erlang.binary_to_term(contents)
+        _ -> nil
+      end
+      {:reply, data, db_folder}
+  end
   defp via_tuple(worker_id) do
-    Todo.ProcessRegistry.via_tuple({__MODULE, worker_id})
+    Todo.ProcessRegistry.via_tuple({__MODULE__, worker_id})
   end
 end

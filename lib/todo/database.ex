@@ -1,12 +1,12 @@
 defmodule Todo.Database do
   use GenServer
   @pool_size 3
-  @db_folder = "./persist"
+  @db_folder "./persist"
 
   def start_link() do
     File.mkdir_p!(@db_folder)
     children = Enum.map(1..@pool_size, &worker_spec/1)
-    Supervisor.start_link(children, startegy: one_for_one)
+    Supervisor.start_link(children, startegy: :one_for_one)
   end
   defp worker_spec(worker_id) do
     default_worker_spec = [Todo.DatabaseWorekr, [@db_folder, worker_id]]
@@ -20,14 +20,16 @@ defmodule Todo.Database do
     }
   end
   def store(key, data) do
-    key
-    |> choose_worker()
-    |> Todo.DatabaseWorker.store(key, data)
+     key
+      |> choose_worker()
+      |> Todo.DatabaseWorker.store(key, data)
+    catch _, _ ->
+    {:reply, {:error, "Failed to store data"}, :state}
   end
-  def get(key, data) do
-    key
-    |> choose_worker()
-    |> Todo.DatabaseWorker.get(key)
+  def get(key) do
+      key
+      |> choose_worker()
+      |> Todo.DatabaseWorker.get(key)
   end
   defp choose_worker(key) do
     :erlang.phash2(key, @pool_size) + 1
@@ -44,11 +46,11 @@ defmodule Todo.Database do
   end
 
   def handle_call({:get, key}, _, state) do
-    data = case File.read(file_name(key)) do
-      {:ok, contents} -> :erlang.binary_to_term(contents)
-      _ -> nil
-    end
-    {:reply, data, state}
+      data = case File.read(file_name(key)) do
+        {:ok, contents} -> :erlang.binary_to_term(contents)
+        _ -> nil
+      end
+      {:reply, data, state}
   end
   defp file_name(key) do
     Path.join(@db_folder, to_string(key))
